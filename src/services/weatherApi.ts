@@ -91,28 +91,10 @@ export async function getCoordinates(city: string): Promise<{ lat: number; lon: 
   }
   
   const result = data.results[0];
-  
-  // 处理城市名称显示逻辑
-  let displayName = result.name;
-  
-  // 中国直辖市列表
-  const municipalities = ['北京市', '天津市', '上海市', '重庆市'];
-  
-  if (result.admin1) {
-    // 检查是否是直辖市
-    if (municipalities.includes(result.admin1)) {
-      // 直辖市直接显示行政区域名称
-      displayName = result.admin1;
-    } else {
-      // 非直辖市显示"省份 城市"格式
-      displayName = `${result.admin1} ${result.name}`;
-    }
-  }
-  
   return {
     lat: result.latitude,
     lon: result.longitude,
-    name: displayName,
+    name: result.name + (result.admin1 ? `, ${result.admin1}` : '') + (result.country ? `, ${result.country}` : ''),
   };
 }
 
