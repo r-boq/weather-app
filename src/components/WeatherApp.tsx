@@ -5,44 +5,15 @@
 
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import type { WeatherData } from '../types/weather';
-import { fetchWeather, getCoordinates, weatherCodeMap, getWeatherIcon, getAirQualityLevel } from '../services/weatherApi';
+import { fetchWeather, weatherCodeMap, getWeatherIcon, getAirQualityLevel } from '../services/weatherApi';
 import './WeatherApp.css';
-
-interface City {
-  name: string;
-  lat: number;
-  lon: number;
-  isDefault?: boolean;
-}
 
 function WeatherApp() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [inputCity, setInputCity] = useState<string>('北京');
-  const [cities, setCities] = useState<City[]>([]);
-
-  // 保存城市列表到 localStorage
-  const saveCities = (cityList: City[]) => {
-    localStorage.setItem('weatherAppCities', JSON.stringify(cityList));
-  };
-
-  // 收藏城市
-  const addCity = useCallback((city: City) => {
-    const existingCity = cities.find(c => c.name === city.name);
-    if (!existingCity) {
-      const updatedCities = [...cities, city];
-      setCities(updatedCities);
-      saveCities(updatedCities);
-    }
-  }, [cities]);
-
-  // 删除城市
-  const removeCity = useCallback((cityName: string) => {
-    const updatedCities = cities.filter(city => city.name !== cityName);
-    setCities(updatedCities);
-    saveCities(updatedCities);
-  }, [cities]);
+  const [currentCity, setCurrentCity] = useState<string>('北京');
 
   const handleSearch = useCallback(async (searchCity: string) => {
     if (!searchCity.trim()) {
@@ -50,19 +21,13 @@ function WeatherApp() {
       return;
     }
 
+    // 更新当前查询城市
+    setCurrentCity(searchCity);
     setLoading(true);
     setError('');
     setWeatherData(null);
 
     try {
-      // 获取城市坐标信息
-      const cityInfo = await getCoordinates(searchCity);
-      // 添加城市到收藏列表
-      addCity({
-        name: cityInfo.name,
-        lat: cityInfo.lat,
-        lon: cityInfo.lon
-      });
       // 获取天气数据
       const data = await fetchWeather(searchCity);
       setWeatherData(data);
@@ -70,14 +35,6 @@ function WeatherApp() {
       setError(err instanceof Error ? err.message : '获取天气失败，请稍后重试');
     } finally {
       setLoading(false);
-    }
-  }, [addCity]);
-
-  useEffect(() => {
-    // 从 localStorage 加载城市列表
-    const savedCities = localStorage.getItem('weatherAppCities');
-    if (savedCities) {
-      setCities(JSON.parse(savedCities));
     }
   }, []);
 
@@ -153,33 +110,20 @@ function WeatherApp() {
           </button>
         </form>
 
-        {/* 城市列表 */}
-        {cities.length > 0 && (
-          <div className="cities-container">
-            <h3>城市列表</h3>
-            <div className="cities-list">
-              {cities.map((city) => (
-                <div key={city.name} className="city-item">
-                  <span
-                    className="city-name"
-                    onClick={() => handleSearch(city.name)}
-                  >
-                    {city.name}
-                  </span>
-                  <button
-                    className="city-remove"
-                    onClick={() => removeCity(city.name)}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
+        {loading && renderLoading()}
+
+        {error && !loading && (
+          <div className="weather-content">
+            <section className="current-weather">
+              <div className="location">
+                <span className="location-icon">📍</span>
+                <h2>{currentCity}</h2>
+              </div>
+              {renderError()}
+            </section>
           </div>
         )}
 
-        {loading && renderLoading()}
-        {error && !loading && renderError()}
         {!loading && !error && !weatherData && renderEmpty()}
 
         {weatherData && (
@@ -187,7 +131,7 @@ function WeatherApp() {
             <section className="current-weather">
               <div className="location">
                 <span className="location-icon">📍</span>
-                <h2>{weatherData.location}</h2>
+                <h2>{currentCity}</h2>
               </div>
 
               <div className="weather-main">
